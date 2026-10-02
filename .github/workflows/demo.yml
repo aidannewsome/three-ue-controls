@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false # a deploy already running finishes; one queued behind it waits instead of cancelling it
 
 jobs:
   deploy:
