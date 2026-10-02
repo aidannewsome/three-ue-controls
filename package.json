@@ -1,6 +1,6 @@
 {
 	"name": "three-ue-controls",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Camera controls for three.js that feel and work like Unreal Engine's editor viewport.",
 	"keywords": [
 		"three",

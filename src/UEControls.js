@@ -439,6 +439,13 @@ class UEControls extends Controls {
 
 	}
 
+	_changeSpeed( deltaY ) {
+
+		const step = deltaY < 0 ? this.speedStep : - this.speedStep;
+		this.speed = MathUtils.clamp( this.speed * ( 1 + step ), this.minSpeed, this.maxSpeed );
+
+	}
+
 	_isFlying() {
 
 		return this._buttons !== 0 || this.isTrackpad;
@@ -597,10 +604,18 @@ function onWheel( event ) {
 	// browsers do not say what a wheel event came from: a pinch arrives with Ctrl held, a trackpad in small pixel
 	// steps, often sideways, a mouse wheel in large upright steps or whole lines
 
-	const pinch = event.ctrlKey;
-	this.isTrackpad = pinch || ( event.deltaMode === 0 && ( event.deltaX !== 0 || Number.isInteger( event.deltaY ) === false || Math.abs( event.deltaY ) < 40 ) );
+	// a wheel turned while the right or middle button is held is always a mouse's: a trackpad has neither to hold. A
+	// mouse that scrolls smoothly sends small steps that would otherwise pass for a trackpad's and turn the camera.
 
-	if ( pinch ) {
+	const pinch = event.ctrlKey;
+	const held = ( this._buttons & ( 2 | 4 ) ) !== 0;
+	this.isTrackpad = ! held && ( pinch || ( event.deltaMode === 0 && ( event.deltaX !== 0 || Number.isInteger( event.deltaY ) === false || Math.abs( event.deltaY ) < 40 ) ) );
+
+	if ( held ) {
+
+		if ( event.deltaY !== 0 ) this._changeSpeed( event.deltaY );
+
+	} else if ( pinch ) {
 
 		this._pinch = - event.deltaY / 100 * this.pinchSpeed; // browsers scale a pinch by e^(-deltaY / 100)
 
@@ -623,8 +638,7 @@ function onWheel( event ) {
 
 	} else if ( this._buttons !== 0 ) {
 
-		const step = event.deltaY < 0 ? this.speedStep : - this.speedStep;
-		this.speed = MathUtils.clamp( this.speed * ( 1 + step ), this.minSpeed, this.maxSpeed );
+		this._changeSpeed( event.deltaY );
 
 	} else if ( event.deltaY !== 0 ) {
 
