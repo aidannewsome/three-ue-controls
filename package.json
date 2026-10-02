@@ -1,0 +1,41 @@
+{
+	"name": "three-ue-controls",
+	"version": "0.1.0",
+	"description": "Camera controls for three.js that feel and work like Unreal Engine's editor viewport.",
+	"keywords": [
+		"three",
+		"three.js",
+		"threejs",
+		"controls",
+		"camera",
+		"fly",
+		"unreal",
+		"editor"
+	],
+	"homepage": "https://aidannewsome.github.io/three-ue-controls/",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/aidannewsome/three-ue-controls.git"
+	},
+	"bugs": "https://github.com/aidannewsome/three-ue-controls/issues",
+	"license": "MIT",
+	"author": "Aidan Newsome",
+	"type": "module",
+	"exports": {
+		".": "./src/UEControls.js"
+	},
+	"files": [
+		"src"
+	],
+	"scripts": {
+		"dev": "vite demo",
+		"build": "vite build demo"
+	},
+	"peerDependencies": {
+		"three": ">=0.170.0"
+	},
+	"devDependencies": {
+		"three": "^0.185.1",
+		"vite": "^8.2.1"
+	}
+}

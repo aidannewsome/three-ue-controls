@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>three-ue-controls</title>
+	<style>
+		html, body { margin: 0; height: 100%; overflow: hidden; background: #c9d3d8; font: 13px/1.5 ui-monospace, Menlo, monospace; }
+		canvas { display: block; }
+		#readout { position: fixed; top: 12px; left: 12px; padding: 10px 12px; background: rgba(255, 255, 255, 0.85); border-radius: 8px; white-space: pre; pointer-events: none; }
+		#help { position: fixed; bottom: 12px; left: 12px; right: 12px; padding: 10px 12px; background: rgba(255, 255, 255, 0.85); border-radius: 8px; pointer-events: none; }
+	</style>
+</head>
+<body>
+	<div id="readout"></div>
+	<div id="help">Right drag looks. W A S D move, E Q up and down, R F up and down in the camera's frame, Z C field of view. Left drag moves and turns, middle drag pans. Wheel moves, wheel with a button held changes speed. Trackpad: two fingers look, pinch moves.</div>
+	<script type="module" src="./main.js"></script>
+</body>
+</html>
