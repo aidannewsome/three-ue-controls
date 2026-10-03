@@ -24,11 +24,11 @@ const _push = new Vector3();
 const _lastPosition = new Vector3();
 
 /**
- * Fly controls after the Unreal Editor's perspective viewport. Hold the right mouse button to look around, the left
- * to move forward and turn, the middle (or both left and right) to pan. W, A, S and D move, E and Q rise and fall in
- * world space, R and F in the camera's own, Z and C widen and narrow the field of view. The mouse wheel moves
- * forward and back, or changes the speed while a button is held. On a trackpad two fingers look around and a pinch
- * moves forward and back.
+ * Fly controls after the Unreal Editor's perspective viewport. Hold the left or the right mouse button to look
+ * around, the middle (or both left and right) to pan. W, A, S and D move, E and Q rise and fall in
+ * world space, R and F in the camera's own, Z and C widen and narrow the field of view. Scrolling, with a mouse
+ * wheel or two fingers on a trackpad, only moves forward and back, or changes the speed while a button is held, so
+ * a scroll never turns the camera. A pinch moves forward and back too.
  *
  * Movement accelerates and is damped the way the editor's camera is, so it eases in and glides to a stop. Looking
  * around is direct. The camera never rolls, and its pitch stops short of straight up and straight down.
@@ -119,7 +119,7 @@ class UEControls extends Controls {
 		this.lookSpeed = 0.2 * MathUtils.DEG2RAD;
 
 		/**
-		 * How far a drag with the left or the middle button moves the camera per pixel at speed 1.
+		 * How far a panning drag, with the middle button or the left and right together, moves the camera per pixel at speed 1.
 		 *
 		 * @type {number}
 		 * @default 0.01
@@ -133,24 +133,6 @@ class UEControls extends Controls {
 		 * @default 0.96
 		 */
 		this.wheelStep = 0.96;
-
-		/**
-		 * How far the view turns per pixel of a two finger scroll on a trackpad, in radians. Small movements turn
-		 * less, see `gestureCurve`.
-		 *
-		 * @type {number}
-		 * @default 0.35 degrees
-		 */
-		this.gestureLookSpeed = 0.35 * MathUtils.DEG2RAD;
-
-		/**
-		 * Below this many pixels per event a two finger scroll turns the view by the square of its movement, so
-		 * small movements are gentle and fine.
-		 *
-		 * @type {number}
-		 * @default 20
-		 */
-		this.gestureCurve = 20;
 
 		/**
 		 * How hard a pinch pushes the camera, per unit of magnification.
@@ -218,8 +200,8 @@ class UEControls extends Controls {
 		this.enableKeys = true;
 
 		/**
-		 * If set to `true`, W, A, S, D, E, Q, R, F, Z and C only move the camera while a mouse button is held or a
-		 * trackpad is in use, which leaves those keys free otherwise, as the Unreal Editor has it by default. The
+		 * If set to `true`, W, A, S, D, E, Q, R, F, Z and C only move the camera while a mouse button is held,
+		 * which leaves those keys free otherwise, as the Unreal Editor has it by default. The
 		 * arrow keys always move it.
 		 *
 		 * @type {boolean}
@@ -246,14 +228,6 @@ class UEControls extends Controls {
 		 */
 		this.velocity = new Vector3();
 
-		/**
-		 * Whether the last wheel event looked like a trackpad's.
-		 *
-		 * @type {boolean}
-		 * @readonly
-		 * @default false
-		 */
-		this.isTrackpad = false;
 
 		// internals
 
@@ -432,13 +406,6 @@ class UEControls extends Controls {
 
 	}
 
-	_curve( delta ) {
-
-		const size = Math.abs( delta );
-		return size <= this.gestureCurve ? delta * size / this.gestureCurve : delta;
-
-	}
-
 	_changeSpeed( deltaY ) {
 
 		const step = deltaY < 0 ? this.speedStep : - this.speedStep;
@@ -448,7 +415,7 @@ class UEControls extends Controls {
 
 	_isFlying() {
 
-		return this._buttons !== 0 || this.isTrackpad;
+		return this._buttons !== 0;
 
 	}
 
@@ -545,14 +512,7 @@ function onPointerMove( event ) {
 	_euler.setFromQuaternion( this.object.quaternion, 'YXZ' );
 	const yaw = _euler.y;
 
-	if ( left && right === false ) {
-
-		// forward and back along the ground, and turn
-
-		this._move( - Math.sin( yaw ) * y * step, 0, - Math.cos( yaw ) * y * step );
-		this._rotate( - x * this.lookSpeed, 0 );
-
-	} else if ( middle && event.altKey === false ) {
+	if ( middle && event.altKey === false ) {
 
 		// pan in the camera's own frame
 
@@ -570,7 +530,9 @@ function onPointerMove( event ) {
 
 		this._move( Math.cos( yaw ) * x * step, y * step, - Math.sin( yaw ) * x * step );
 
-	} else if ( right ) {
+	} else if ( left || right ) {
+
+		// look around, with the left button or the right
 
 		this._rotate( - x * this.lookSpeed, y * this.lookSpeed );
 
@@ -601,44 +563,17 @@ function onWheel( event ) {
 
 	event.preventDefault();
 
-	// browsers do not say what a wheel event came from: a pinch arrives with Ctrl held, a trackpad in small pixel
-	// steps, often sideways, a mouse wheel in large upright steps or whole lines
+	if ( this._buttons !== 0 ) {
 
-	// a wheel turned while the right or middle button is held is always a mouse's: a trackpad has neither to hold. A
-	// mouse that scrolls smoothly sends small steps that would otherwise pass for a trackpad's and turn the camera.
-
-	const pinch = event.ctrlKey;
-	const held = ( this._buttons & ( 2 | 4 ) ) !== 0;
-	this.isTrackpad = ! held && ( pinch || ( event.deltaMode === 0 && ( event.deltaX !== 0 || Number.isInteger( event.deltaY ) === false || Math.abs( event.deltaY ) < 40 ) ) );
-
-	if ( held ) {
+		// a wheel turned while a button is held changes the speed, as in Unreal
 
 		if ( event.deltaY !== 0 ) this._changeSpeed( event.deltaY );
 
-	} else if ( pinch ) {
+	} else if ( event.ctrlKey ) {
+
+		// a pinch arrives as a wheel with Ctrl held
 
 		this._pinch = - event.deltaY / 100 * this.pinchSpeed; // browsers scale a pinch by e^(-deltaY / 100)
-
-	} else if ( this.isTrackpad ) {
-
-		if ( ( this._buttons & 1 ) !== 0 ) {
-
-			// pan, while the trackpad is pressed
-
-			_euler.setFromQuaternion( this.object.quaternion, 'YXZ' );
-			const yaw = _euler.y;
-			const step = this.dragSpeed;
-			this._move( Math.cos( yaw ) * event.deltaX * step, - event.deltaY * step, - Math.sin( yaw ) * event.deltaX * step );
-
-		} else {
-
-			this._rotate( this._curve( event.deltaX ) * this.gestureLookSpeed, this._curve( event.deltaY ) * this.gestureLookSpeed );
-
-		}
-
-	} else if ( this._buttons !== 0 ) {
-
-		this._changeSpeed( event.deltaY );
 
 	} else if ( event.deltaY !== 0 ) {
 

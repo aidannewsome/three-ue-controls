@@ -98,7 +98,6 @@ function animate( time ) {
 		`velocity  ${ controls.velocity.length().toFixed( 1 ) } m/s`,
 		`position  ${ camera.position.toArray().map( ( v ) => v.toFixed( 1 ) ).join( ', ' ) }`,
 		`fov       ${ camera.fov.toFixed( 1 ) }`,
-		`input     ${ controls.isTrackpad ? 'trackpad' : 'mouse' }`,
 	].join( '\n' );
 
 }
