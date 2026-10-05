@@ -1,6 +1,6 @@
 # three-ue-controls
 
-Camera controls for three.js that feel and work like Unreal Engine's editor viewport. If you know how to fly around a level in Unreal, you already know how to use these: hold a mouse button to look, WASD to move, E and Q to rise and fall, and scroll while holding the button to change speed. The camera eases in and glides to a stop the way Unreal's does. A trackpad works the same way: press and drag to look, scroll or pinch to move.
+Camera controls for three.js that feel and work like Unreal Engine's editor viewport. If you know how to fly around a level in Unreal, you already know how to use these: hold a mouse button to look, WASD to move, E and Q to rise and fall, and scroll while holding the button to change speed. The camera eases in and glides to a stop the way Unreal's does. On a laptop, scroll while holding a movement key to change speed, no click needed.
 
 **[Try the demo](https://aidannewsome.github.io/three-ue-controls/)**
 
@@ -39,16 +39,17 @@ renderer.setAnimationLoop( () => {
 | E, Q | Move up and down |
 | R, F | Move up and down along the camera's own up |
 | Z, C | Widen and narrow the field of view, springing back when let go |
-| Scroll, mouse or trackpad | Move forward and back, never turning |
-| Scroll while holding a button | Change speed |
+| Scroll | Move forward and back, never turning |
+| Scroll while holding a button or a movement key | Change speed |
 | Middle drag, or left and right together | Pan |
-| Trackpad, pinch | Move forward and back |
+| Trackpad, pinch | Move forward and back, or nothing while a button or movement key is held |
 
 ## Differences from Unreal
 
 - The keys work without holding a mouse button, so laptop users can fly with the trackpad and keyboard alone. If your users are on a mouse and you want Unreal's default, where the keys fly only while a button is held, set `holdToFly = true`.
 - The left button looks around, as the right does, instead of moving along the ground and turning. With it a trackpad can look around by pressing and dragging.
-- A scroll only ever moves forward and back. Browsers do not say whether a scroll came from a mouse or a trackpad, and guessing turned the camera when a mouse scrolled smoothly.
+- A scroll never turns the camera. Browsers do not say whether a scroll came from a mouse or a trackpad, and guessing turned the camera when a mouse scrolled smoothly.
+- A scroll also changes the speed while a movement key is held, as it does while a button is held, so a trackpad changes speed without a click. A pinch does nothing then, as two fingers are changing the speed.
 
 ## Settings
 
@@ -62,9 +63,10 @@ controls.keys.UP = [ 'Space' ];  // rebind a key
 
 | Property | Default | What it does |
 | --- | --- | --- |
-| `speed` | `1` | Multiplier on every movement. Scrolling while a button is held changes it. |
+| `speed` | `1` | Multiplier on every movement. Scrolling while a button or a movement key is held changes it. |
 | `minSpeed`, `maxSpeed` | `0.00001`, `10000` | The range scrolling keeps `speed` in. |
 | `speedStep` | `0.1` | Share of `speed` one scroll notch adds or takes away. |
+| `speedScroll` | `100` | Pixels of a trackpad's continuous scroll for each speed step after its first. |
 | `acceleration` | `200` | How fast a held key speeds the camera up, in m/s² at speed 1. |
 | `damping` | `10` | How fast the camera slows, per second. With `acceleration` it sets the top speed, about 17 m/s. |
 | `lookSpeed` | `0.2°` | How far the view turns per pixel, in radians. |

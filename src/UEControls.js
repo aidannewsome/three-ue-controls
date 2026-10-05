@@ -22,13 +22,19 @@ const _right = new Vector3();
 const _up = new Vector3();
 const _push = new Vector3();
 const _lastPosition = new Vector3();
+const SCROLL_PAUSE = 200; // milliseconds between scrolls that make them separate, not one stream
+const LINE = 33; // pixels a scrolled line counts as, so three lines, a notch in Firefox, are about one notch's 100
+const PAGE = 800;
+const MOVING = [ 'FORWARD', 'BACKWARD', 'LEFT', 'RIGHT', 'UP', 'DOWN', 'LOCAL_UP', 'LOCAL_DOWN' ];
+const ARROWS = [ 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown' ];
 
 /**
  * Fly controls after the Unreal Editor's perspective viewport. Hold the left or the right mouse button to look
  * around, the middle (or both left and right) to pan. W, A, S and D move, E and Q rise and fall in
- * world space, R and F in the camera's own, Z and C widen and narrow the field of view. Scrolling, with a mouse
- * wheel or two fingers on a trackpad, only moves forward and back, or changes the speed while a button is held, so
- * a scroll never turns the camera. A pinch moves forward and back too.
+ * world space, R and F in the camera's own, Z and C widen and narrow the field of view. A pinch moves forward and
+ * back. A scroll moves forward and back, and changes the speed while a button is held, as in Unreal, or while a
+ * key that moves the camera is held, so a trackpad changes it without a click. A pinch does nothing while either is
+ * held.
  *
  * Movement accelerates and is damped the way the editor's camera is, so it eases in and glides to a stop. Looking
  * around is direct. The camera never rolls, and its pitch stops short of straight up and straight down.
@@ -61,8 +67,8 @@ class UEControls extends Controls {
 		super( camera, domElement );
 
 		/**
-		 * The camera speed, a multiplier on every movement. The mouse wheel changes it by `speedStep` while a button
-		 * is held.
+		 * The camera speed, a multiplier on every movement. Scrolling changes it by `speedStep` while a button is
+		 * held, or with a trackpad while a key that moves the camera is held.
 		 *
 		 * @type {number}
 		 * @default 1
@@ -92,6 +98,15 @@ class UEControls extends Controls {
 		 * @default 0.1
 		 */
 		this.speedStep = 0.1;
+
+		/**
+		 * How far a scroll goes, in pixels, for each speed step after its first, so the stream of small scrolls a
+		 * trackpad sends steps the speed about as often as a mouse wheel's notches do.
+		 *
+		 * @type {number}
+		 * @default 100
+		 */
+		this.speedScroll = 100;
 
 		/**
 		 * How fast a held key accelerates the camera at speed 1, in units per second squared.
@@ -235,6 +250,8 @@ class UEControls extends Controls {
 		this._buttons = 0;
 		this._modified = false;
 		this._pinch = 0;
+		this._scrolled = 0;
+		this._scrolledAt = - Infinity;
 		this._fovVelocity = 0;
 		this._fovBefore = - 1;
 		this._moved = false;
@@ -413,9 +430,45 @@ class UEControls extends Controls {
 
 	}
 
+	_scrollSpeed( deltaY, time ) {
+
+		// the first scroll after a pause steps the speed at once, as a notch of a mouse wheel; the rest of a stream of
+		// them, a trackpad's, steps it once each `speedScroll` pixels
+
+		if ( time - this._scrolledAt > SCROLL_PAUSE ) {
+
+			this._scrolled = 0;
+			this._changeSpeed( deltaY );
+
+		} else {
+
+			this._scrolled += deltaY;
+
+			while ( Math.abs( this._scrolled ) >= this.speedScroll ) {
+
+				this._changeSpeed( this._scrolled );
+				this._scrolled -= Math.sign( this._scrolled ) * this.speedScroll;
+
+			}
+
+		}
+
+		this._scrolledAt = time;
+
+	}
+
 	_isFlying() {
 
 		return this._buttons !== 0;
+
+	}
+
+	_isSteering() {
+
+		// a key that moves the camera held, where the keys move it without a button
+
+		if ( this.enableKeys === false || this.holdToFly || this._modified ) return false;
+		return MOVING.some( ( name ) => this._key( true, name ) === 1 ) || ARROWS.some( ( code ) => this._pressed.has( code ) );
 
 	}
 
@@ -563,11 +616,26 @@ function onWheel( event ) {
 
 	event.preventDefault();
 
-	if ( this._buttons !== 0 ) {
+	const flying = this._buttons !== 0;
+	const steering = flying === false && this._isSteering();
+
+	if ( ( flying || steering ) && event.ctrlKey ) {
+
+		// a pinch while flying does nothing: there two fingers change the speed
+
+	} else if ( flying ) {
 
 		// a wheel turned while a button is held changes the speed, as in Unreal
 
 		if ( event.deltaY !== 0 ) this._changeSpeed( event.deltaY );
+
+	} else if ( steering ) {
+
+		// so does a scroll while a key moves the camera, the same way round, for a trackpad, where no button is held
+		// to fly; its stream of small scrolls steps the speed by distance
+
+		const scale = event.deltaMode === 1 ? LINE : event.deltaMode === 2 ? PAGE : 1; // lines and pages as pixels
+		if ( event.deltaY !== 0 ) this._scrollSpeed( event.deltaY * scale, event.timeStamp );
 
 	} else if ( event.ctrlKey ) {
 
