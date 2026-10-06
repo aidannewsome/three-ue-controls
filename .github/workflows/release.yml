@@ -1,0 +1,57 @@
+# On a version tag: the package published to npm by trusted publishing, no token stored anywhere, with provenance,
+# and attached to a GitHub release noting the commits since the last.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The tag must be the version in package.json
+        run: test "v$(node -p 'require("./package.json").version')" = "${GITHUB_REF_NAME}"
+      - run: npm pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: "*.tgz"
+
+  publish:
+    needs: pack
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24  # npm 11.5.1 or later is needed for trusted publishing
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: npm publish
+
+  release:
+    needs: [pack, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: package
+          path: dist
+      - name: Notes from the commits since the last release
+        run: |
+          previous=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          git log --format='- %s' ${previous:+$previous..}"$GITHUB_REF_NAME" > notes.md
+      - run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file notes.md --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
